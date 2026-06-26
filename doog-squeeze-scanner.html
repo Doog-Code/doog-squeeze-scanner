@@ -564,6 +564,7 @@
         <option value="all">Tous</option>
         <option value="Hyperliquid" selected>Hyperliquid</option>
         <option value="dYdX">dYdX</option>
+        <option value="Paradex">Paradex</option>
       </select>
     </div>
     <button class="btn btn-primary" onclick="applyFilters()">Filtrer</button>
@@ -579,6 +580,10 @@
     <div class="status-item">
       <div class="status-dot orange" id="dydx-dot"></div>
       <span>dYdX</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot orange" id="paradex-dot"></div>
+      <span>Paradex</span>
     </div>
     <div class="status-item" style="margin-left:8px;">
       <span style="color:var(--text3)">Marchés scannés :</span>
@@ -975,9 +980,34 @@ async function fetchDydx() {
   }
 }
 
-// ============================================================
-// SIGNAL SCORE (funding + OI)
-// ============================================================
+async function fetchParadex() {
+  try {
+    const res = await fetch('https://api.prod.paradex.trade/v1/markets/summary');
+    if (!res.ok) throw new Error('Paradex ' + res.status);
+    const data = await res.json();
+    document.getElementById('paradex-dot').style.background = 'var(--green)';
+    return (data.results || [])
+      .filter(m => m.symbol && m.symbol.endsWith('-USD-PERP'))
+      .map(m => {
+        const fr = parseFloat(m.funding_rate) || 0;
+        const apr = fr * 8760 * 100;
+        const oi = parseFloat(m.open_interest_usd) || 0;
+        const coin = m.symbol.replace('-USD-PERP', '');
+        return {
+          coin,
+          protocol: 'Paradex',
+          fundingRate: fr,
+          apr,
+          oi,
+          markPrice: parseFloat(m.mark_price) || 0,
+          vol24: parseFloat(m.volume_24h) || 0,
+        };
+      }).filter(m => !isNaN(m.apr) && m.oi > 0);
+  } catch(e) {
+    document.getElementById('paradex-dot').style.background = 'var(--red)';
+    return [];
+  }
+}
 function signalScore(m) {
   // Funding score (0–5)
   const a = m.apr;
@@ -1156,8 +1186,8 @@ async function loadData() {
   document.getElementById('scanner-table-wrap').innerHTML = `<div class="loading-state"><div class="spinner"></div>Chargement des marchés...</div>`;
   countdown = 300;
   try {
-    const [hl, dx] = await Promise.all([fetchHyperliquid(), fetchDydx()]);
-    allMarkets = [...hl, ...dx];
+    const [hl, dx, px] = await Promise.all([fetchHyperliquid(), fetchDydx(), fetchParadex()]);
+    allMarkets = [...hl, ...dx, ...px];
     document.getElementById('total-markets').textContent = allMarkets.length;
     document.getElementById('last-refresh').textContent = 'Mis à jour : ' + new Date().toLocaleTimeString('fr-FR');
     updateBtcContext(allMarkets);
