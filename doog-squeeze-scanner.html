@@ -1,0 +1,1574 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Doog — Exhaustion Short Scanner</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;700;800&display=swap');
+
+  :root {
+    --bg: #0a0c0f;
+    --bg2: #0f1218;
+    --bg3: #151a22;
+    --border: #1e2530;
+    --border2: #2a3340;
+    --text: #e2e8f0;
+    --text2: #8896a8;
+    --text3: #4a5568;
+    --green: #00e5a0;
+    --green2: #00b87a;
+    --green-dim: rgba(0,229,160,0.08);
+    --red: #ff4d6a;
+    --red2: #cc2244;
+    --red-dim: rgba(255,77,106,0.08);
+    --orange: #ffaa00;
+    --orange-dim: rgba(255,170,0,0.08);
+    --blue: #4da6ff;
+    --blue-dim: rgba(77,166,255,0.08);
+    --purple: #b06aff;
+    --purple-dim: rgba(176,106,255,0.08);
+    --mono: 'Space Mono', monospace;
+    --sans: 'Syne', sans-serif;
+  }
+
+  * { margin:0; padding:0; box-sizing:border-box; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--sans);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* HEADER */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 18px 28px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg2);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: var(--sans);
+    font-weight: 800;
+    font-size: 18px;
+    letter-spacing: -0.5px;
+  }
+  .logo-icon {
+    width: 28px; height: 28px;
+    background: var(--red-dim);
+    border: 1px solid rgba(255,77,106,0.3);
+    border-radius: 6px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 14px;
+  }
+  .logo-sub {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: 1px;
+    display: block;
+    margin-top: 1px;
+  }
+  .header-right {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+  }
+  .live-badge {
+    background: var(--red-dim);
+    border: 1px solid rgba(255,77,106,0.25);
+    color: var(--red);
+    padding: 4px 10px;
+    border-radius: 4px;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+  }
+  .live-dot {
+    width: 6px; height: 6px;
+    background: var(--red);
+    border-radius: 50%;
+    animation: pulse-red 2s infinite;
+  }
+  @keyframes pulse-red {
+    0%,100% { opacity:1; box-shadow: 0 0 8px var(--red); }
+    50% { opacity:0.4; box-shadow: 0 0 2px var(--red); }
+  }
+
+  /* TABS */
+  .tabs {
+    display: flex;
+    gap: 0;
+    padding: 0 28px;
+    background: var(--bg2);
+    border-bottom: 1px solid var(--border);
+    overflow-x: auto;
+  }
+  .tab {
+    padding: 14px 22px;
+    font-family: var(--sans);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text3);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+  }
+  .tab:hover { color: var(--text2); }
+  .tab.active { color: var(--red); border-bottom-color: var(--red); }
+  .tab-count {
+    background: var(--red-dim);
+    color: var(--red);
+    border-radius: 10px;
+    padding: 1px 7px;
+    font-size: 10px;
+    font-family: var(--mono);
+  }
+
+  /* MAIN */
+  main { padding: 24px 28px; max-width: 1400px; margin: 0 auto; }
+  .tab-content { display: none; }
+  .tab-content.active { display: block; }
+
+  /* BTC CONTEXT BAR */
+  .btc-bar {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    padding: 12px 18px;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    flex-wrap: wrap;
+    gap: 14px;
+  }
+  .btc-bar.neutral { background: var(--green-dim); border-color: rgba(0,229,160,0.2); }
+  .btc-bar.caution { background: var(--orange-dim); border-color: rgba(255,170,0,0.2); }
+  .btc-bar.danger  { background: var(--red-dim);    border-color: rgba(255,77,106,0.2); }
+  .btc-label { font-weight: 700; font-size: 10px; letter-spacing: 0.8px; text-transform: uppercase; }
+  .btc-label.neutral { color: var(--green); }
+  .btc-label.caution { color: var(--orange); }
+  .btc-label.danger  { color: var(--red); }
+  .btc-item { display: flex; align-items: center; gap: 6px; color: var(--text2); }
+  .btc-verdict {
+    margin-left: auto;
+    font-size: 11px;
+    font-weight: 700;
+    font-family: var(--sans);
+    padding: 4px 10px;
+    border-radius: 4px;
+  }
+  .btc-verdict.ok    { background: var(--green-dim); color: var(--green); border: 1px solid rgba(0,229,160,0.2); }
+  .btc-verdict.warn  { background: var(--orange-dim); color: var(--orange); border: 1px solid rgba(255,170,0,0.2); }
+  .btc-verdict.block { background: var(--red-dim); color: var(--red); border: 1px solid rgba(255,77,106,0.2); }
+
+  /* SCANNER CONTROLS */
+  .scanner-controls {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    align-items: flex-end;
+  }
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+  }
+  .control-label {
+    font-size: 10px;
+    font-family: var(--mono);
+    color: var(--text3);
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+  }
+  input[type="number"], select {
+    background: var(--bg3);
+    border: 1px solid var(--border2);
+    color: var(--text);
+    font-family: var(--mono);
+    font-size: 12px;
+    padding: 8px 12px;
+    border-radius: 6px;
+    outline: none;
+    transition: border 0.2s;
+    min-width: 100px;
+  }
+  input[type="number"]:focus, select:focus { border-color: var(--red); }
+  select option { background: var(--bg3); }
+
+  .btn {
+    padding: 9px 18px;
+    border-radius: 6px;
+    font-family: var(--sans);
+    font-size: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    border: none;
+    transition: all 0.2s;
+    letter-spacing: 0.3px;
+    align-self: flex-end;
+  }
+  .btn-primary { background: var(--red); color: #fff; }
+  .btn-primary:hover { background: var(--red2); }
+  .btn-ghost {
+    background: transparent;
+    border: 1px solid var(--border2);
+    color: var(--text2);
+  }
+  .btn-ghost:hover { border-color: var(--red); color: var(--red); }
+
+  /* STATUS BAR */
+  .status-bar {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 10px 16px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    margin-bottom: 20px;
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--text2);
+    flex-wrap: wrap;
+  }
+  .status-item { display: flex; align-items: center; gap: 6px; }
+  .status-dot { width:6px; height:6px; border-radius:50%; flex-shrink:0; }
+  .status-dot.green  { background: var(--green);  box-shadow: 0 0 6px var(--green); }
+  .status-dot.orange { background: var(--orange); }
+  .status-dot.red    { background: var(--red);    }
+  .refresh-info { font-family:var(--mono); font-size:10px; color:var(--text3); margin-left:auto; }
+
+  /* TABLE */
+  .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
+  table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px; }
+  thead th {
+    background: var(--bg3);
+    color: var(--text3);
+    font-size: 10px;
+    letter-spacing: 0.8px;
+    text-transform: uppercase;
+    padding: 12px 14px;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+    cursor: pointer;
+    white-space: nowrap;
+    user-select: none;
+  }
+  thead th:hover { color: var(--text2); }
+  thead th.sort-asc::after  { content: ' ↑'; color: var(--red); }
+  thead th.sort-desc::after { content: ' ↓'; color: var(--red); }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background 0.15s; }
+  tbody tr:hover { background: var(--bg3); }
+  tbody tr:last-child { border-bottom: none; }
+  td { padding: 12px 14px; white-space: nowrap; }
+
+  .coin-cell { display:flex; align-items:center; gap:9px; font-family:var(--sans); font-weight:700; font-size:13px; }
+  .coin-icon {
+    width:26px; height:26px; border-radius:50%;
+    background: var(--bg3); border: 1px solid var(--border2);
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; font-family:var(--mono); color:var(--text2); flex-shrink:0;
+  }
+
+  .apr-hi  { color: var(--red);    font-weight:700; }
+  .apr-med { color: var(--orange); font-weight:700; }
+  .apr-low { color: var(--text2); }
+
+  /* SIGNAL SCORE BADGES */
+  .sig-badge {
+    display: inline-flex; align-items:center; gap:5px;
+    padding: 4px 10px; border-radius:4px;
+    font-size: 11px; font-weight:700; font-family:var(--sans);
+  }
+  .sig-strong  { background:var(--red-dim);    color:var(--red);    border:1px solid rgba(255,77,106,0.25); }
+  .sig-watch   { background:var(--orange-dim); color:var(--orange); border:1px solid rgba(255,170,0,0.2); }
+  .sig-weak    { background:var(--bg3);        color:var(--text3);  border:1px solid var(--border); }
+
+  /* CRITERIA DOTS */
+  .crit-row { display:flex; gap:4px; align-items:center; }
+  .crit-dot {
+    width:8px; height:8px; border-radius:50%;
+  }
+  .crit-dot.on  { background:var(--red);    box-shadow:0 0 5px var(--red); }
+  .crit-dot.med { background:var(--orange); }
+  .crit-dot.off { background:var(--border2); }
+
+  .action-btn {
+    padding: 5px 11px; border-radius:5px;
+    font-family:var(--sans); font-size:11px; font-weight:700;
+    cursor:pointer; transition:all 0.2s; white-space:nowrap;
+  }
+  .action-btn-trade {
+    background: var(--red-dim);
+    color: var(--red);
+    border: 1px solid rgba(255,77,106,0.25);
+  }
+  .action-btn-trade:hover { background: var(--red); color: #fff; }
+  .action-btn-alert {
+    background: var(--orange-dim);
+    color: var(--orange);
+    border: 1px solid rgba(255,170,0,0.2);
+  }
+  .action-btn-alert:hover { background: var(--orange); color: var(--bg); }
+
+  /* LOADING / ERROR */
+  .loading-state { text-align:center; padding:60px 20px; color:var(--text2); font-family:var(--mono); font-size:13px; }
+  .spinner { width:32px; height:32px; border:2px solid var(--border2); border-top-color:var(--red); border-radius:50%; animation:spin 0.8s linear infinite; margin:0 auto 16px; }
+  @keyframes spin { to { transform:rotate(360deg); } }
+  .error-state { text-align:center; padding:40px 20px; color:var(--red); font-family:var(--mono); font-size:12px; background:var(--red-dim); border:1px solid rgba(255,77,106,0.2); border-radius:8px; }
+
+  /* CARDS */
+  .card { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:22px; }
+  .card-title {
+    font-family:var(--sans); font-size:11px; font-weight:700;
+    color:var(--text2); letter-spacing:1px; text-transform:uppercase;
+    margin-bottom:18px; display:flex; align-items:center; gap:8px;
+  }
+  .card-title::before { content:''; width:3px; height:14px; background:var(--red); border-radius:2px; }
+
+  /* TRADE CALCULATOR */
+  .calc-grid { display:grid; grid-template-columns:1fr 1fr; gap:20px; }
+  @media(max-width:900px){ .calc-grid{ grid-template-columns:1fr; } }
+
+  .calc-row { display:flex; flex-direction:column; gap:5px; margin-bottom:14px; }
+  .calc-label { font-size:11px; font-family:var(--mono); color:var(--text3); letter-spacing:0.5px; }
+  .calc-input {
+    background:var(--bg3); border:1px solid var(--border2);
+    color:var(--text); font-family:var(--mono); font-size:14px;
+    padding:10px 14px; border-radius:6px; outline:none; width:100%;
+    transition:border 0.2s;
+  }
+  .calc-input:focus { border-color:var(--red); }
+
+  .result-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:6px; }
+  .result-card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; padding:14px; }
+  .result-label { font-size:10px; font-family:var(--mono); color:var(--text3); letter-spacing:0.8px; text-transform:uppercase; margin-bottom:6px; }
+  .result-value { font-family:var(--mono); font-size:20px; font-weight:700; color:var(--green); }
+  .result-value.warn   { color:var(--orange); }
+  .result-value.danger { color:var(--red); }
+  .result-sub { font-size:10px; color:var(--text3); font-family:var(--mono); margin-top:2px; }
+
+  .rr-bar { height:8px; border-radius:4px; margin-top:6px; background:var(--border); overflow:hidden; }
+  .rr-fill { height:100%; border-radius:4px; transition:width 0.5s ease; }
+
+  /* CHECKLIST */
+  .checklist { display:flex; flex-direction:column; gap:8px; }
+  .check-item {
+    display:flex; align-items:center; gap:12px;
+    padding:10px 14px; border-radius:7px;
+    border:1px solid var(--border);
+    background:var(--bg3); cursor:pointer;
+    transition:all 0.2s; font-family:var(--mono); font-size:12px;
+  }
+  .check-item.checked { background:var(--red-dim); border-color:rgba(255,77,106,0.25); color:var(--text); }
+  .check-item:not(.checked) { color:var(--text3); }
+  .check-box {
+    width:16px; height:16px; border-radius:3px;
+    border:1px solid var(--border2); flex-shrink:0;
+    display:flex; align-items:center; justify-content:center;
+    font-size:10px; transition:all 0.2s;
+  }
+  .check-item.checked .check-box { background:var(--red); border-color:var(--red); color:#fff; }
+  .check-progress {
+    height:4px; border-radius:2px; background:var(--border);
+    overflow:hidden; margin-bottom:14px;
+  }
+  .check-progress-fill { height:100%; background:var(--red); transition:width 0.3s ease; }
+  .check-score {
+    font-family:var(--mono); font-size:28px; font-weight:700;
+    margin-bottom:4px;
+  }
+  .check-score.ok    { color:var(--red); }
+  .check-score.warn  { color:var(--orange); }
+  .check-score.weak  { color:var(--text3); }
+
+  /* ALERTS */
+  .alert-form { background:var(--bg2); border:1px solid var(--border); border-radius:10px; padding:22px; margin-bottom:20px; }
+  .alert-row { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+  .alert-list { display:flex; flex-direction:column; gap:10px; }
+  .alert-item {
+    background:var(--bg2); border:1px solid var(--border);
+    border-radius:8px; padding:14px 16px;
+    display:flex; align-items:center; justify-content:space-between; gap:12px;
+  }
+  .alert-item.triggered { border-color:rgba(255,77,106,0.4); background:var(--red-dim); }
+  .alert-info { flex:1; }
+  .alert-name { font-family:var(--sans); font-weight:700; font-size:13px; margin-bottom:3px; }
+  .alert-detail { font-family:var(--mono); font-size:11px; color:var(--text2); }
+  .alert-delete { background:transparent; border:1px solid var(--border2); color:var(--text3); border-radius:4px; padding:4px 9px; font-size:12px; cursor:pointer; transition:all 0.2s; }
+  .alert-delete:hover { border-color:var(--red); color:var(--red); }
+  .alert-triggered-badge { background:var(--red); color:#fff; font-size:9px; font-family:var(--mono); font-weight:700; padding:2px 6px; border-radius:3px; letter-spacing:0.5px; }
+
+  /* INFO BOXES */
+  .info-box { background:var(--blue-dim); border:1px solid rgba(77,166,255,0.15); border-radius:8px; padding:14px 16px; font-size:12px; font-family:var(--mono); color:var(--text2); line-height:1.6; margin-bottom:20px; }
+  .info-box strong { color:var(--blue); }
+  .warn-box { background:var(--orange-dim); border:1px solid rgba(255,170,0,0.2); border-radius:8px; padding:12px 16px; font-size:11px; font-family:var(--mono); color:var(--orange); line-height:1.6; margin-top:10px; }
+
+  /* SECTION TITLE */
+  .section-title { font-family:var(--sans); font-size:22px; font-weight:800; color:var(--text); margin-bottom:6px; letter-spacing:-0.5px; }
+  .section-sub { font-family:var(--mono); font-size:11px; color:var(--text3); margin-bottom:22px; letter-spacing:0.3px; }
+
+  /* EMPTY */
+  .empty-state { text-align:center; padding:40px; color:var(--text3); font-family:var(--mono); font-size:12px; }
+
+  /* NOTIFICATION */
+  .notif {
+    position:fixed; top:20px; right:20px;
+    background:var(--bg3); border:1px solid var(--red);
+    border-radius:8px; padding:14px 18px;
+    font-family:var(--mono); font-size:12px; color:var(--text);
+    z-index:1000; max-width:320px;
+    box-shadow:0 4px 24px rgba(0,0,0,0.4);
+    transform:translateX(140%); transition:transform 0.3s ease;
+  }
+  .notif.show { transform:translateX(0); }
+  .notif strong { color:var(--red); display:block; margin-bottom:4px; }
+
+  /* TOOLTIP */
+  .tooltip-wrap { position:relative; display:inline-block; }
+  .tooltip-icon { width:14px; height:14px; border-radius:50%; background:var(--bg3); border:1px solid var(--border2); color:var(--text3); font-size:9px; display:inline-flex; align-items:center; justify-content:center; cursor:help; font-family:var(--mono); vertical-align:middle; margin-left:4px; }
+  .tooltip-box { display:none; position:absolute; bottom:calc(100% + 6px); left:50%; transform:translateX(-50%); background:var(--bg3); border:1px solid var(--border2); border-radius:6px; padding:8px 12px; font-size:11px; font-family:var(--mono); color:var(--text2); z-index:200; pointer-events:none; line-height:1.5; max-width:260px; white-space:normal; text-align:left; }
+  .tooltip-wrap:hover .tooltip-box { display:block; }
+
+  /* GUIDE STEPS */
+  .guide-steps { display:flex; flex-direction:column; gap:12px; margin-top:10px; }
+  .guide-step { display:flex; gap:14px; align-items:flex-start; }
+  .step-num { width:28px; height:28px; border-radius:50%; background:var(--red-dim); border:1px solid rgba(255,77,106,0.2); color:var(--red); font-family:var(--mono); font-size:11px; font-weight:700; display:flex; align-items:center; justify-content:center; flex-shrink:0; }
+  .step-text { font-family:var(--mono); font-size:11px; color:var(--text2); line-height:1.6; padding-top:5px; }
+  .step-text strong { color:var(--text); }
+
+  /* PROTOCOL BADGE */
+  .protocol-badge { background:var(--blue-dim); color:var(--blue); border:1px solid rgba(77,166,255,0.15); border-radius:4px; padding:2px 7px; font-size:10px; font-weight:700; }
+
+  .tag-manual { background:var(--purple-dim); color:var(--purple); border:1px solid rgba(176,106,255,0.2); border-radius:3px; padding:1px 6px; font-size:9px; font-family:var(--mono); font-weight:700; letter-spacing:0.5px; }
+
+  /* MATH TABLE */
+  .math-table { width:100%; border-collapse:collapse; font-family:var(--mono); font-size:12px; }
+  .math-table th { background:var(--bg3); color:var(--text3); font-size:10px; letter-spacing:0.8px; text-transform:uppercase; padding:10px 14px; text-align:center; border-bottom:1px solid var(--border); }
+  .math-table td { padding:10px 14px; text-align:center; border-bottom:1px solid var(--border); color:var(--text2); }
+  .math-table tr:last-child td { border-bottom:none; }
+  .math-table td.win  { color:var(--green); font-weight:700; }
+  .math-table td.lose { color:var(--red); font-weight:700; }
+  .math-table td.hi { color:var(--text); font-weight:700; }
+
+  /* COLLAPSIBLE */
+  .collapse-header {
+    display:flex; align-items:center; justify-content:space-between;
+    cursor:pointer; padding:14px 18px;
+    background:var(--bg3); border:1px solid var(--border);
+    border-radius:8px; margin-bottom:4px;
+    font-family:var(--sans); font-size:13px; font-weight:700;
+    color:var(--text2); transition:all 0.2s;
+  }
+  .collapse-header:hover { color:var(--text); border-color:var(--border2); }
+  .collapse-header.open { color:var(--red); border-color:rgba(255,77,106,0.3); background:var(--red-dim); border-radius:8px 8px 0 0; margin-bottom:0; }
+  .collapse-arrow { transition:transform 0.2s; }
+  .collapse-header.open .collapse-arrow { transform:rotate(180deg); }
+  .collapse-body { display:none; border:1px solid rgba(255,77,106,0.15); border-top:none; border-radius:0 0 8px 8px; padding:18px; background:var(--bg2); margin-bottom:12px; }
+  .collapse-body.open { display:block; }
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">↓</div>
+    <div>
+      Doog — Exhaustion Short
+      <span class="logo-sub">FUNDING EXTREME · OI EXTREME · PRICE FAILURE</span>
+    </div>
+  </div>
+  <div class="header-right">
+    <span id="countdown-text" style="color:var(--text3)">Chargement...</span>
+    <div class="live-badge"><div class="live-dot"></div> LIVE</div>
+  </div>
+</header>
+
+<!-- TABS -->
+<div class="tabs">
+  <div class="tab active" onclick="switchTab('scanner')">🔍 Scanner <span class="tab-count" id="count-badge">—</span></div>
+  <div class="tab" onclick="switchTab('checklist')">✅ Checklist <span class="tab-count" id="check-badge">0/5</span></div>
+  <div class="tab" onclick="switchTab('calculator')">📐 Calculateur</div>
+  <div class="tab" onclick="switchTab('alertes')">🔔 Alertes <span class="tab-count" id="alert-count">0</span></div>
+  <div class="tab" onclick="switchTab('math')">📊 Espérance</div>
+  <div class="tab" onclick="switchTab('guide')">📖 Guide</div>
+</div>
+
+<!-- NOTIFICATION -->
+<div class="notif" id="notif"><strong id="notif-title"></strong><span id="notif-body"></span></div>
+
+<!-- MAIN -->
+<main>
+
+<!-- ==================== SCANNER ==================== -->
+<div class="tab-content active" id="tab-scanner">
+  <div class="section-title">Scanner Exhaustion Short</div>
+  <div class="section-sub">Funding extrême + OI extrême + Échec haussier — Hyperliquid + dYdX</div>
+
+  <!-- BTC CONTEXT BAR -->
+  <div class="btc-bar neutral" id="btc-bar">
+    <div class="btc-label neutral" id="btc-label">BTC CONTEXT</div>
+    <div class="btc-item" id="btc-price">Prix : chargement...</div>
+    <div class="btc-item" id="btc-funding">Funding BTC : —</div>
+    <div class="btc-item" id="btc-oi">OI BTC : —</div>
+    <div class="btc-verdict ok" id="btc-verdict">⚙ Analyse...</div>
+    <div style="font-size:10px;color:var(--text3);font-family:var(--mono);">
+      <span class="tag-manual">⚠ RSI Daily BTC</span> à vérifier manuellement sur TradingView
+    </div>
+  </div>
+
+  <!-- CONTROLS -->
+  <div class="scanner-controls">
+    <div class="control-group">
+      <span class="control-label">Funding Min (% ann.)</span>
+      <input type="number" id="filter-funding" value="80" step="10" min="0">
+    </div>
+    <div class="control-group">
+      <span class="control-label">OI Min ($)</span>
+      <select id="filter-oi">
+        <option value="1000000">1M$</option>
+        <option value="3000000" selected>3M$</option>
+        <option value="5000000">5M$</option>
+        <option value="10000000">10M$</option>
+      </select>
+    </div>
+    <div class="control-group">
+      <span class="control-label">Exchange</span>
+      <select id="filter-exchange">
+        <option value="all">Tous</option>
+        <option value="Hyperliquid" selected>Hyperliquid</option>
+        <option value="dYdX">dYdX</option>
+      </select>
+    </div>
+    <button class="btn btn-primary" onclick="applyFilters()">Filtrer</button>
+    <button class="btn btn-ghost" onclick="loadData()">↺ Refresh</button>
+  </div>
+
+  <!-- STATUS -->
+  <div class="status-bar">
+    <div class="status-item">
+      <div class="status-dot green" id="hl-dot"></div>
+      <span>Hyperliquid</span>
+    </div>
+    <div class="status-item">
+      <div class="status-dot orange" id="dydx-dot"></div>
+      <span>dYdX</span>
+    </div>
+    <div class="status-item" style="margin-left:8px;">
+      <span style="color:var(--text3)">Marchés scannés :</span>
+      <span id="total-markets" style="color:var(--text)">—</span>
+    </div>
+    <div class="status-item">
+      <span style="color:var(--text3)">Signaux forts :</span>
+      <span id="strong-signals" style="color:var(--red);font-weight:700;">—</span>
+    </div>
+    <div class="refresh-info" id="last-refresh">—</div>
+  </div>
+
+  <!-- TABLE -->
+  <div id="scanner-table-wrap">
+    <div class="loading-state"><div class="spinner"></div>Chargement des marchés...</div>
+  </div>
+
+  <div class="warn-box" style="margin-top:14px;">
+    <strong>⚠ Ce scanner détecte le critère #1 (Funding) et le critère #3 (OI).</strong>
+    Les critères #2 (Stagnation de prix 3+ jours) et #4 (Cassure du range) doivent être vérifiés manuellement sur TradingView. Voir l'onglet Guide.
+  </div>
+</div>
+
+<!-- ==================== CHECKLIST ==================== -->
+<div class="tab-content" id="tab-checklist">
+  <div class="section-title">Checklist d'entrée</div>
+  <div class="section-sub">Coche chaque critère pour valider ton setup — sauvegardé localement</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="calc-grid">
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Score du setup</div>
+        <div class="check-score weak" id="check-score-num">0/8</div>
+        <div style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-bottom:12px;" id="check-verdict">Aucun critère coché</div>
+        <div class="check-progress"><div class="check-progress-fill" id="check-prog" style="width:0%"></div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Token analysé</div>
+        <div class="calc-row">
+          <label class="calc-label">Nom du token</label>
+          <input class="calc-input" id="check-token" placeholder="ex: PEPE" oninput="saveChecklist()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Funding annualisé (%)</label>
+          <input class="calc-input" type="number" id="check-funding-val" placeholder="ex: 180" oninput="saveChecklist()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">OI actuel ($M)</label>
+          <input class="calc-input" type="number" id="check-oi-val" placeholder="ex: 12.5" oninput="saveChecklist()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Notes</label>
+          <input class="calc-input" id="check-notes" placeholder="Observations..." oninput="saveChecklist()">
+        </div>
+        <button class="btn btn-ghost" style="width:100%;margin-top:6px;" onclick="resetChecklist()">Réinitialiser</button>
+        <button class="btn btn-primary" style="width:100%;margin-top:8px;" onclick="sendToCalc()">→ Envoyer au Calculateur</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="checklist" id="checklist-items"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== CALCULATEUR ==================== -->
+<div class="tab-content" id="tab-calculator">
+  <div class="section-title">Calculateur de trade</div>
+  <div class="section-sub">Capital 500$ — Gestion du risque intégrée</div>
+
+  <div class="calc-grid">
+    <!-- INPUTS -->
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Paramètres du trade</div>
+
+        <div class="calc-row">
+          <label class="calc-label">Capital total ($)</label>
+          <input class="calc-input" type="number" id="c-capital" value="500" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Risque par trade (% capital)
+            <span class="tooltip-wrap"><span class="tooltip-icon">?</span><span class="tooltip-box">Règle fixe : 1% du capital. Sur 500$ = 5$ max de perte par trade.</span></span>
+          </label>
+          <input class="calc-input" type="number" id="c-risk-pct" value="1" min="0.5" max="3" step="0.1" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Prix d'entrée ($)</label>
+          <input class="calc-input" type="number" id="c-entry" placeholder="ex: 10.00" step="0.0001" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Stop-Loss ($) — Haut du range + 2%
+            <span class="tooltip-wrap"><span class="tooltip-icon">?</span><span class="tooltip-box">Dernier ATH du range + 2% de marge. Si le range est trop large pour respecter R:R ≥ 2:1, ne pas trader.</span></span>
+          </label>
+          <input class="calc-input" type="number" id="c-stop" placeholder="ex: 10.42" step="0.0001" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Objectif 1 ($) — Support 4h</label>
+          <input class="calc-input" type="number" id="c-tp1" placeholder="ex: 9.20" step="0.0001" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Objectif 2 ($) — Support majeur</label>
+          <input class="calc-input" type="number" id="c-tp2" placeholder="ex: 8.50" step="0.0001" oninput="calcTrade()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Levier</label>
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-ghost" id="lev-3" onclick="setLev(3)" style="font-family:var(--mono);">×3</button>
+            <button class="btn btn-ghost" id="lev-4" onclick="setLev(4)" style="font-family:var(--mono);">×4</button>
+            <button class="btn btn-primary" id="lev-5" onclick="setLev(5)" style="font-family:var(--mono);">×5</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- RESULTS -->
+    <div>
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Résultats</div>
+        <div class="result-grid" id="calc-results">
+          <div class="result-card"><div class="result-label">Risque max</div><div class="result-value" id="r-risk">—</div><div class="result-sub">Perte si SL touché</div></div>
+          <div class="result-card"><div class="result-label">Notionnel</div><div class="result-value" id="r-notional">—</div><div class="result-sub">Taille de position</div></div>
+          <div class="result-card"><div class="result-label">Marge requise</div><div class="result-value" id="r-margin">—</div><div class="result-sub">USDC à bloquer</div></div>
+          <div class="result-card"><div class="result-label">Distance SL</div><div class="result-value" id="r-sl-dist">—</div><div class="result-sub">% vs entrée</div></div>
+          <div class="result-card"><div class="result-label">R:R Obj. 1</div><div class="result-value" id="r-rr1">—</div><div class="result-sub" id="r-gain1">—</div></div>
+          <div class="result-card"><div class="result-label">R:R Obj. 2</div><div class="result-value" id="r-rr2">—</div><div class="result-sub" id="r-gain2">—</div></div>
+        </div>
+        <div id="calc-verdict" style="margin-top:14px;"></div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Plan de sortie</div>
+        <div id="exit-plan" style="font-family:var(--mono);font-size:11px;color:var(--text2);line-height:1.8;">
+          Entre les paramètres pour voir le plan de sortie.
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== ALERTES ==================== -->
+<div class="tab-content" id="tab-alertes">
+  <div class="section-title">Alertes de prix</div>
+  <div class="section-sub">Alertes sur niveaux de prix clés — stockées localement, actives tant que l'onglet est ouvert</div>
+
+  <div class="info-box">
+    <strong>Comment utiliser les alertes ici :</strong> Configure les niveaux clés de ton setup (bas du range, stop, objectifs).
+    L'outil joue un son et envoie une notification navigateur quand le prix live Hyperliquid touche ton niveau.<br>
+    <strong>Pour les alertes TradingView</strong> (recommandé en complément) → voir l'onglet Guide.
+  </div>
+
+  <div class="alert-form">
+    <div class="card-title">Nouvelle alerte</div>
+    <div class="alert-row">
+      <div class="control-group">
+        <span class="control-label">Token</span>
+        <input type="text" id="al-coin" placeholder="BTC" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;outline:none;min-width:90px;" oninput="this.value=this.value.toUpperCase()">
+      </div>
+      <div class="control-group">
+        <span class="control-label">Condition</span>
+        <select id="al-cond" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;min-width:110px;">
+          <option value="lt">Prix &lt; seuil (cassure bas)</option>
+          <option value="gt">Prix &gt; seuil (SL / ATH)</option>
+        </select>
+      </div>
+      <div class="control-group">
+        <span class="control-label">Seuil ($)</span>
+        <input type="number" id="al-price" placeholder="ex: 9.80" step="0.0001" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;min-width:110px;">
+      </div>
+      <div class="control-group">
+        <span class="control-label">Type</span>
+        <select id="al-type" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;min-width:130px;">
+          <option value="entry">🎯 Déclencheur entrée</option>
+          <option value="sl">⛔ Stop-Loss</option>
+          <option value="tp1">✅ Objectif 1</option>
+          <option value="tp2">🏁 Objectif 2</option>
+          <option value="invalid">❌ Invalidation</option>
+        </select>
+      </div>
+      <button class="btn btn-primary" onclick="addAlert()">+ Ajouter</button>
+    </div>
+  </div>
+
+  <div id="alert-list"><div class="empty-state">Aucune alerte configurée</div></div>
+</div>
+
+<!-- ==================== ESPERANCE ==================== -->
+<div class="tab-content" id="tab-math">
+  <div class="section-title">Espérance mathématique</div>
+  <div class="section-sub">Peut-on être rentable à 3/10 ou 4/10 trades gagnants ?</div>
+
+  <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;" class="calc-grid">
+    <div>
+      <div class="card">
+        <div class="card-title">Simulation interactive</div>
+        <div class="calc-row">
+          <label class="calc-label">Win rate (%)</label>
+          <input class="calc-input" type="number" id="m-wr" value="35" min="10" max="90" oninput="calcMath()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Ratio R:R moyen</label>
+          <input class="calc-input" type="number" id="m-rr" value="2.5" min="1" max="10" step="0.1" oninput="calcMath()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Risque par trade ($)</label>
+          <input class="calc-input" type="number" id="m-risk" value="5" oninput="calcMath()">
+        </div>
+        <div class="calc-row">
+          <label class="calc-label">Nombre de trades simulés</label>
+          <input class="calc-input" type="number" id="m-trades" value="20" min="5" max="100" oninput="calcMath()">
+        </div>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <div class="card-title">Résultat</div>
+        <div id="math-result"></div>
+      </div>
+    </div>
+  </div>
+
+  <div style="margin-top:20px;">
+    <div class="card">
+      <div class="card-title">Table de survie — Win rate minimum pour être rentable</div>
+      <div class="table-wrap" style="margin-top:0;">
+        <table class="math-table">
+          <thead><tr><th>Ratio R:R</th><th>Win rate min</th><th>Sur 10 trades</th><th>Espérance / trade</th></tr></thead>
+          <tbody>
+            <tr><td>1.5:1</td><td class="hi">40%</td><td>4/10 gagnants</td><td class="win">+0.10R</td></tr>
+            <tr><td>2:1</td><td class="hi">33%</td><td>3-4/10 gagnants</td><td class="win">+0.20R</td></tr>
+            <tr><td>2.5:1</td><td class="hi">29%</td><td>3/10 gagnants</td><td class="win">+0.25R</td></tr>
+            <tr><td>3:1</td><td class="hi">25%</td><td>2-3/10 gagnants</td><td class="win">+0.25R</td></tr>
+            <tr><td>2:1 avec 30% WR</td><td class="lose">30%</td><td>3/10</td><td class="lose">−0.10R</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="warn-box" style="margin-top:12px;">
+        Règle absolue : <strong>ne jamais entrer si R:R &lt; 2:1</strong>. Si le range est trop large, passer au trade suivant.
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ==================== GUIDE ==================== -->
+<div class="tab-content" id="tab-guide">
+  <div class="section-title">Guide opérationnel</div>
+  <div class="section-sub">Ce que l'outil fait seul vs ce que tu dois faire manuellement</div>
+
+  <div class="info-box" style="margin-bottom:20px;">
+    <strong>Résumé :</strong> Ce scanner automatise le Critère 1 (Funding live) et le Critère 3 (OI live + filtre liquidité).
+    Les Critères 2, 4, le contexte BTC (RSI daily) et la divergence RSI 1h doivent être faits manuellement sur TradingView. C'est inévitable — ces données nécessitent un accès à l'historique des prix.
+  </div>
+
+  <div class="collapse-header open" onclick="toggleCollapse(this)">
+    🤖 Ce que l'outil fait automatiquement <span class="collapse-arrow">▼</span>
+  </div>
+  <div class="collapse-body open">
+    <div class="guide-steps">
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Funding annualisé live</strong><br>Récupère le funding rate Hyperliquid et dYdX toutes les 5 minutes. Filtre les tokens avec funding > seuil configurable (défaut 80%).</div></div>
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Open Interest live + filtre liquidité</strong><br>Affiche l'OI actuel de chaque token. Filtre les OI < 3M$ (défaut) pour éliminer les tokens trop peu liquides.</div></div>
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Contexte BTC automatique</strong><br>Récupère le prix, funding et OI de BTC en temps réel. Donne un verdict "Neutre / Attention / Bloquer" basé sur le funding BTC.</div></div>
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Score de signal</strong><br>Calcule un score combiné funding + OI pour chaque token et les classe par priorité.</div></div>
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Calculateur de trade</strong><br>Taille de position, marge, ratio R:R, plan de sortie — basé sur ton capital et tes niveaux.</div></div>
+      <div class="guide-step"><div class="step-num">✓</div><div class="step-text"><strong>Alertes de prix</strong><br>Son + notification navigateur quand le prix live touche un niveau clé (cassure de range, SL, objectifs).</div></div>
+    </div>
+  </div>
+
+  <div class="collapse-header" onclick="toggleCollapse(this)" style="margin-top:12px;">
+    👤 Ce que tu dois faire manuellement <span class="collapse-arrow">▼</span>
+  </div>
+  <div class="collapse-body">
+    <div class="guide-steps">
+      <div class="guide-step"><div class="step-num">1</div><div class="step-text"><strong>Vérifier la stagnation du prix (Critère 2)</strong><br>Sur TradingView → graphique 4h du token identifié par le scanner.<br>Question : le prix stagne-t-il depuis 3+ jours <em>pendant que</em> le funding et l'OI augmentent ? C'est le signal le plus fort.</div></div>
+      <div class="guide-step"><div class="step-num">2</div><div class="step-text"><strong>Confirmer l'OI multi-exchange (CoinGlass)</strong><br>Aller sur <a href="https://coinglass.com/en/FundingRate" target="_blank" style="color:var(--blue)">coinglass.com</a> → vérifier que le funding est élevé sur Binance + Bybit également, pas seulement Hyperliquid. Si seulement HL = signal plus faible.</div></div>
+      <div class="guide-step"><div class="step-num">3</div><div class="step-text"><strong>RSI Daily BTC (filtre contextuel)</strong><br>TradingView → BTC/USDT Daily → RSI(14).<br>❌ Ne pas trader si RSI BTC > 70 ou si BTC vient de casser une résistance.<br>✅ Trader si RSI BTC entre 45–65 et BTC en range ou distribution.</div></div>
+      <div class="guide-step"><div class="step-num">4</div><div class="step-text"><strong>Divergence RSI baissière 1h (confirmation)</strong><br>TradingView → graphique 1h → RSI(14).<br>Le prix fait un double sommet, le RSI fait un sommet plus bas = divergence baissière.<br>Ce filtre élimine les faux setups.</div></div>
+      <div class="guide-step"><div class="step-num">5</div><div class="step-text"><strong>Identifier le range et placer les alertes TradingView</strong><br>Sur le 4h : tracer le haut du range (résistance) et le bas du range (support).<br>Créer une alerte TradingView sur le bas du range → déclencheur d'entrée.<br>Créer une alerte TradingView sur le haut du range + 2% → stop d'urgence.</div></div>
+      <div class="guide-step"><div class="step-num">6</div><div class="step-text"><strong>Vérifier l'évolution de l'OI sur 7j et 30j</strong><br>CoinGlass → Open Interest → sélectionner le token.<br>OI aujourd'hui vs 7 jours : +30% minimum.<br>OI en hausse alors que prix stagne = signal de levier qui rentre sans conviction.</div></div>
+      <div class="guide-step"><div class="step-num">7</div><div class="step-text"><strong>Vérifier l'absence d'annonce récente</strong><br>Chercher sur X/Twitter si une annonce (listing, partenariat, upgrade) a été faite dans les 24h. Si oui : ne pas shorter. Le gap risk est réel.</div></div>
+      <div class="guide-step"><div class="step-num">8</div><div class="step-text"><strong>Surveiller l'OI et le funding 2× par jour en position</strong><br>Matin + soir : OI a-t-il chuté de 20%+ ? Si oui → prendre les gains (liquidation en cours).<br>Funding revenu sous 30% ? → sortir (déséquilibre résolu).<br>J+7 sans mouvement → sortir.</div></div>
+    </div>
+  </div>
+
+  <div class="collapse-header" onclick="toggleCollapse(this)" style="margin-top:12px;">
+    📋 Checklist rapide avant entrée <span class="collapse-arrow">▼</span>
+  </div>
+  <div class="collapse-body">
+    <div style="font-family:var(--mono);font-size:12px;color:var(--text2);line-height:2;">
+      <div>☐ Funding > 80% depuis 3+ jours <span class="tag-manual">Scanner</span></div>
+      <div>☐ OI Hyperliquid > 3M$ <span class="tag-manual">Scanner</span></div>
+      <div>☐ Funding confirmé multi-exchange sur CoinGlass <span class="tag-manual">Manuel</span></div>
+      <div>☐ OI 7j +30% sur CoinGlass <span class="tag-manual">Manuel</span></div>
+      <div>☐ Prix en range 3+ jours sur TradingView 4h <span class="tag-manual">Manuel</span></div>
+      <div>☐ BTC en contexte neutre (RSI daily 45–65) <span class="tag-manual">Manuel</span></div>
+      <div>☐ Divergence RSI baissière sur TradingView 1h <span class="tag-manual">Manuel</span></div>
+      <div>☐ Pas d'annonce récente sur le token <span class="tag-manual">Manuel</span></div>
+      <div>☐ Ratio R:R ≥ 2:1 calculé dans le Calculateur <span class="tag-manual">Calculateur</span></div>
+      <div>☐ Alertes TradingView placées sur le range <span class="tag-manual">Manuel</span></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ============================================================
+// STATE
+// ============================================================
+let allMarkets = [];
+let filteredMarkets = [];
+let alerts = JSON.parse(localStorage.getItem('doog_es_alerts') || '[]');
+let countdown = 300;
+let currentLev = 5;
+
+const CHECKLIST_ITEMS = [
+  { id:'c1', label:'Funding > 80% depuis 3+ jours',                 auto: true,  required: true,  tip:'Visible dans le scanner — BLOQUANT' },
+  { id:'c3', label:'OI Hyperliquid > 3M$',                          auto: true,  required: true,  tip:'Visible dans le scanner — BLOQUANT' },
+  { id:'c5', label:'Prix en range 3+ jours (TradingView 4h)',        auto: false, required: true,  tip:'Graphique 4h — stagnation visible — BLOQUANT' },
+  { id:'c6', label:'BTC contexte neutre (Daily)',                    auto: false, required: true,  tip:'TradingView BTC/USDT Daily → pas de breakout, RSI < 70 — BLOQUANT' },
+  { id:'c9', label:'Ratio R:R ≥ 2:1 (Calculateur)',                 auto: false, required: true,  tip:'Calculateur — si R:R < 2:1, ne pas trader — BLOQUANT' },
+  { id:'c2', label:'Funding confirmé multi-exchange (CoinGlass)',    auto: false, required: false, tip:'coinglass.com → Funding Rates — renforce le signal' },
+  { id:'c4', label:'OI 7j +30% (CoinGlass)',                        auto: false, required: false, tip:'coinglass.com → Open Interest — renforce le signal' },
+  { id:'c7', label:'Divergence RSI baissière 1h (TradingView)',      auto: false, required: false, tip:'Graphique 1h — prix double top, RSI baisse — renforce le signal' },
+  { id:'c8', label:'Pas d\'annonce récente sur le token',            auto: false, required: false, tip:'Vérifier Twitter/X avant d\'entrer — bon sens' },
+];
+
+let checkState = JSON.parse(localStorage.getItem('doog_es_check') || '{}');
+
+// ============================================================
+// TABS
+// ============================================================
+function switchTab(name) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+  document.getElementById('tab-' + name).classList.add('active');
+  const tabs = ['scanner','checklist','calculator','alertes','math','guide'];
+  const idx = tabs.indexOf(name);
+  document.querySelectorAll('.tab')[idx].classList.add('active');
+}
+
+// ============================================================
+// FETCH HYPERLIQUID
+// ============================================================
+async function fetchHyperliquid() {
+  const res = await fetch('https://api.hyperliquid.xyz/info', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ type: 'metaAndAssetCtxs' })
+  });
+  if (!res.ok) throw new Error('HL HTTP ' + res.status);
+  const data = await res.json();
+  const universe = data[0].universe;
+  const ctxs = data[1];
+  document.getElementById('hl-dot').style.background = 'var(--green)';
+  return universe.map((asset, i) => {
+    const ctx = ctxs[i];
+    const fr = parseFloat(ctx.funding);
+    const apr = fr * 8760 * 100;
+    const oi = parseFloat(ctx.openInterest) * parseFloat(ctx.markPx) || 0;
+    return {
+      coin: asset.name,
+      protocol: 'Hyperliquid',
+      fundingRate: fr,
+      apr: apr,
+      oi: oi,
+      markPrice: parseFloat(ctx.markPx) || 0,
+      vol24: parseFloat(ctx.dayNtlVlm) || 0,
+    };
+  }).filter(m => !isNaN(m.apr));
+}
+
+async function fetchDydx() {
+  try {
+    const res = await fetch('https://indexer.dydx.trade/v4/perpetualMarkets?limit=100');
+    if (!res.ok) throw new Error('dYdX ' + res.status);
+    const data = await res.json();
+    document.getElementById('dydx-dot').style.background = 'var(--green)';
+    return Object.values(data.markets || {}).map(m => {
+      const fr = parseFloat(m.nextFundingRate) || 0;
+      return {
+        coin: m.baseAsset || m.ticker.split('-')[0],
+        protocol: 'dYdX',
+        fundingRate: fr,
+        apr: fr * 8760 * 100,
+        oi: parseFloat(m.openInterest) * parseFloat(m.oraclePrice) || 0,
+        markPrice: parseFloat(m.oraclePrice) || 0,
+        vol24: parseFloat(m.volume24H) || 0,
+      };
+    }).filter(m => !isNaN(m.apr));
+  } catch(e) {
+    document.getElementById('dydx-dot').style.background = 'var(--red)';
+    return [];
+  }
+}
+
+// ============================================================
+// SIGNAL SCORE (funding + OI)
+// ============================================================
+function signalScore(m) {
+  // Funding score (0–5)
+  const a = m.apr;
+  let fs = a > 200 ? 5 : a > 150 ? 4 : a > 100 ? 3 : a > 80 ? 2 : a > 50 ? 1 : 0;
+
+  // OI score (0–5)
+  const oi = m.oi;
+  let os = oi > 50e6 ? 5 : oi > 20e6 ? 4 : oi > 10e6 ? 3 : oi > 3e6 ? 2 : oi > 1e6 ? 1 : 0;
+
+  return { total: fs + os, fs, os };
+}
+
+function sigClass(score) {
+  if (score.total >= 7) return { cls:'sig-strong', label:'🔴 SIGNAL FORT' };
+  if (score.total >= 4) return { cls:'sig-watch', label:'🟡 Surveiller' };
+  return { cls:'sig-weak', label:'— Faible' };
+}
+
+function fmtApr(v) {
+  const cls = v > 150 ? 'apr-hi' : v > 80 ? 'apr-med' : 'apr-low';
+  return `<span class="${cls}">${v > 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+}
+function fmtUsd(v) {
+  if (v >= 1e9) return '$' + (v/1e9).toFixed(2) + 'B';
+  if (v >= 1e6) return '$' + (v/1e6).toFixed(2) + 'M';
+  if (v >= 1e3) return '$' + (v/1e3).toFixed(1) + 'K';
+  return '$' + v.toFixed(0);
+}
+
+// ============================================================
+// BTC CONTEXT
+// ============================================================
+function updateBtcContext(markets) {
+  const btc = markets.find(m => m.coin === 'BTC');
+  if (!btc) return;
+
+  document.getElementById('btc-price').textContent = `BTC : $${btc.markPrice.toLocaleString('fr-FR', {maximumFractionDigits:0})}`;
+  document.getElementById('btc-funding').textContent = `Funding BTC : ${btc.apr > 0 ? '+' : ''}${btc.apr.toFixed(1)}% ann.`;
+  document.getElementById('btc-oi').textContent = `OI BTC : ${fmtUsd(btc.oi)}`;
+
+  const bar = document.getElementById('btc-bar');
+  const lbl = document.getElementById('btc-label');
+  const vrd = document.getElementById('btc-verdict');
+  bar.className = 'btc-bar';
+
+  if (btc.apr > 120) {
+    bar.classList.add('danger');
+    lbl.className = 'btc-label danger';
+    lbl.textContent = 'BTC — DANGER';
+    vrd.className = 'btc-verdict block';
+    vrd.textContent = '🚫 Éviter les shorts altcoin';
+  } else if (btc.apr > 60) {
+    bar.classList.add('caution');
+    lbl.className = 'btc-label caution';
+    lbl.textContent = 'BTC — ATTENTION';
+    vrd.className = 'btc-verdict warn';
+    vrd.textContent = '⚠ Contexte risk-on — prudence';
+  } else {
+    bar.classList.add('neutral');
+    lbl.className = 'btc-label neutral';
+    lbl.textContent = 'BTC — NEUTRE';
+    vrd.className = 'btc-verdict ok';
+    vrd.textContent = '✓ Contexte favorable aux shorts';
+  }
+}
+
+// ============================================================
+// RENDER TABLE
+// ============================================================
+let sortCol = 'apr';
+let sortDir = -1;
+
+function renderTable(markets) {
+  const wrap = document.getElementById('scanner-table-wrap');
+  const oiMin = parseFloat(document.getElementById('filter-oi').value);
+  const fundMin = parseFloat(document.getElementById('filter-funding').value);
+
+  if (!markets.length) {
+    wrap.innerHTML = `<div class="error-state">Aucun marché ne correspond aux filtres.</div>`;
+    return;
+  }
+
+  document.getElementById('count-badge').textContent = markets.length;
+  const strongCount = markets.filter(m => signalScore(m).total >= 7).length;
+  document.getElementById('strong-signals').textContent = strongCount;
+
+  const sorted = [...markets].sort((a,b) => {
+    if (sortCol === 'signal') return (signalScore(a).total - signalScore(b).total) * sortDir;
+    const va = a[sortCol] !== undefined ? a[sortCol] : 0;
+    const vb = b[sortCol] !== undefined ? b[sortCol] : 0;
+    return (va - vb) * sortDir;
+  });
+
+  const headers = [
+    { key:'coin',     label:'Token' },
+    { key:'protocol', label:'Exchange' },
+    { key:'apr',      label:'Funding APR' },
+    { key:'markPrice',label:'Prix' },
+    { key:'oi',       label:'OI ($)' },
+    { key:'signal',   label:'Signal' },
+    { key:'criteria', label:'Critères auto', sort:false },
+    { key:'action',   label:'Actions', sort:false },
+  ];
+
+  let thead = '<thead><tr>';
+  headers.forEach(h => {
+    if (h.sort === false) { thead += `<th>${h.label}</th>`; return; }
+    const cls = sortCol === h.key ? (sortDir === -1 ? 'sort-desc' : 'sort-asc') : '';
+    thead += `<th class="${cls}" onclick="sortBy('${h.key}')">${h.label}</th>`;
+  });
+  thead += '</tr></thead>';
+
+  let tbody = '<tbody>';
+  sorted.forEach(m => {
+    const sc = signalScore(m);
+    const sig = sigClass(sc);
+    const initials = m.coin.slice(0,3).toUpperCase();
+
+    // Criteria dots: [funding>80, funding>150, OI>3M, OI>10M]
+    const d = [
+      m.apr > 80  ? 'on' : m.apr > 50 ? 'med' : 'off',
+      m.apr > 150 ? 'on' : m.apr > 100 ? 'med' : 'off',
+      m.oi > 3e6  ? 'on' : m.oi > 1e6 ? 'med' : 'off',
+      m.oi > 10e6 ? 'on' : m.oi > 5e6 ? 'med' : 'off',
+    ];
+    const criLabels = ['F>80%','F>150%','OI>3M','OI>10M'];
+    const criDots = d.map((s,i) =>
+      `<span class="tooltip-wrap"><span class="crit-dot ${s}" title="${criLabels[i]}"></span><span class="tooltip-box">${criLabels[i]}</span></span>`
+    ).join('');
+
+    const priceStr = m.markPrice > 0.0001
+      ? '$' + m.markPrice.toLocaleString('en-US', {maximumSignificantDigits:5})
+      : '—';
+
+    tbody += `<tr>
+      <td><div class="coin-cell"><div class="coin-icon">${initials}</div>${m.coin}</div></td>
+      <td><span class="protocol-badge">${m.protocol}</span></td>
+      <td>${fmtApr(m.apr)}</td>
+      <td style="color:var(--text2);font-family:var(--mono)">${priceStr}</td>
+      <td style="color:var(--text2)">${fmtUsd(m.oi)}</td>
+      <td><span class="sig-badge ${sig.cls}">${sig.label}</span></td>
+      <td><div class="crit-row">${criDots}</div></td>
+      <td style="display:flex;gap:6px;align-items:center;">
+        <button class="action-btn action-btn-trade" onclick="openChecklist('${m.coin}',${m.apr.toFixed(1)},${m.oi.toFixed(0)})">✅ Checker</button>
+        <button class="action-btn action-btn-alert" onclick="prefillAlert('${m.coin}',${m.markPrice})">🔔 Alerte</button>
+      </td>
+    </tr>`;
+  });
+  tbody += '</tbody>';
+
+  wrap.innerHTML = `<div class="table-wrap"><table>${thead}${tbody}</table></div>`;
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = -1; }
+  renderTable(filteredMarkets);
+}
+
+function applyFilters() {
+  const fundMin = parseFloat(document.getElementById('filter-funding').value) || 0;
+  const oiMin   = parseFloat(document.getElementById('filter-oi').value) || 0;
+  const exch    = document.getElementById('filter-exchange').value;
+  filteredMarkets = allMarkets.filter(m =>
+    m.apr >= fundMin &&
+    m.oi >= oiMin &&
+    (exch === 'all' || m.protocol === exch)
+  );
+  renderTable(filteredMarkets);
+}
+
+// ============================================================
+// LOAD DATA
+// ============================================================
+async function loadData() {
+  document.getElementById('scanner-table-wrap').innerHTML = `<div class="loading-state"><div class="spinner"></div>Chargement des marchés...</div>`;
+  countdown = 300;
+  try {
+    const [hl, dx] = await Promise.all([fetchHyperliquid(), fetchDydx()]);
+    allMarkets = [...hl, ...dx];
+    document.getElementById('total-markets').textContent = allMarkets.length;
+    document.getElementById('last-refresh').textContent = 'Mis à jour : ' + new Date().toLocaleTimeString('fr-FR');
+    updateBtcContext(allMarkets);
+    applyFilters();
+    checkAlerts();
+  } catch(e) {
+    document.getElementById('scanner-table-wrap').innerHTML = `<div class="error-state">Erreur de chargement : ${e.message}</div>`;
+  }
+}
+
+// ============================================================
+// CHECKLIST
+// ============================================================
+function renderChecklist() {
+  const el = document.getElementById('checklist-items');
+  const required = CHECKLIST_ITEMS.filter(i => i.required);
+  const optional = CHECKLIST_ITEMS.filter(i => !i.required);
+
+  function renderGroup(items, groupLabel, groupColor) {
+    return `<div style="font-size:10px;font-family:var(--mono);color:${groupColor};letter-spacing:0.8px;text-transform:uppercase;margin:10px 0 6px;font-weight:700;">${groupLabel}</div>` +
+    items.map(item => {
+      const checked = !!checkState[item.id];
+      const autoTag = item.auto
+        ? `<span style="font-size:9px;background:var(--green-dim);color:var(--green);border:1px solid rgba(0,229,160,0.2);border-radius:3px;padding:1px 5px;font-family:var(--mono);margin-left:6px;">AUTO</span>`
+        : `<span class="tag-manual">MANUEL</span>`;
+      const reqTag = item.required
+        ? `<span style="font-size:9px;background:var(--red-dim);color:var(--red);border:1px solid rgba(255,77,106,0.2);border-radius:3px;padding:1px 5px;font-family:var(--mono);margin-left:4px;">REQUIS</span>`
+        : `<span style="font-size:9px;background:var(--orange-dim);color:var(--orange);border:1px solid rgba(255,170,0,0.15);border-radius:3px;padding:1px 5px;font-family:var(--mono);margin-left:4px;">+BONUS</span>`;
+      return `<div class="check-item ${checked ? 'checked' : ''}" onclick="toggleCheck('${item.id}')">
+        <div class="check-box">${checked ? '✓' : ''}</div>
+        <span>${item.label} ${autoTag}${reqTag}</span>
+      </div>`;
+    }).join('');
+  }
+
+  el.innerHTML = renderGroup(required, '⛔ Critères bloquants — tous obligatoires', 'var(--red)') +
+                 renderGroup(optional, '➕ Critères bonus — renforcent le signal', 'var(--orange)');
+  updateCheckScore();
+}
+
+function toggleCheck(id) {
+  checkState[id] = !checkState[id];
+  saveChecklist();
+  renderChecklist();
+}
+
+function updateCheckScore() {
+  const required = CHECKLIST_ITEMS.filter(i => i.required);
+  const optional = CHECKLIST_ITEMS.filter(i => !i.required);
+  const reqDone  = required.filter(i => checkState[i.id]).length;
+  const optDone  = optional.filter(i => checkState[i.id]).length;
+  const allDone  = reqDone + optDone;
+  const total    = CHECKLIST_ITEMS.length;
+
+  const pct = (allDone / total * 100).toFixed(0);
+  document.getElementById('check-prog').style.width = pct + '%';
+  const scoreEl  = document.getElementById('check-score-num');
+  const verdictEl = document.getElementById('check-verdict');
+
+  scoreEl.textContent = reqDone + '/' + required.length + ' req · ' + optDone + '/' + optional.length + ' bonus';
+  document.getElementById('check-badge').textContent = reqDone + '/' + required.length;
+
+  const allReqDone = reqDone === required.length;
+
+  if (allReqDone && optDone >= 3) {
+    scoreEl.className = 'check-score ok';
+    verdictEl.textContent = '✓ Setup solide — entrée valide avec confiance';
+    verdictEl.style.color = 'var(--red)';
+  } else if (allReqDone && optDone >= 1) {
+    scoreEl.className = 'check-score ok';
+    verdictEl.textContent = '✓ Setup valide — entrée possible (' + optDone + ' bonus)';
+    verdictEl.style.color = 'var(--red)';
+  } else if (allReqDone) {
+    scoreEl.className = 'check-score warn';
+    verdictEl.textContent = '⚠ Critères requis OK — entrée possible, signal minimal';
+    verdictEl.style.color = 'var(--orange)';
+  } else {
+    const manquants = required.length - reqDone;
+    scoreEl.className = 'check-score weak';
+    verdictEl.textContent = manquants + ' critère(s) bloquant(s) manquant(s) — pas d\'entrée';
+    verdictEl.style.color = 'var(--text3)';
+  }
+}
+
+function saveChecklist() {
+  const extra = {
+    token: document.getElementById('check-token')?.value || '',
+    funding: document.getElementById('check-funding-val')?.value || '',
+    oi: document.getElementById('check-oi-val')?.value || '',
+    notes: document.getElementById('check-notes')?.value || '',
+  };
+  localStorage.setItem('doog_es_check', JSON.stringify({...checkState, ...extra}));
+}
+
+function resetChecklist() {
+  checkState = {};
+  localStorage.removeItem('doog_es_check');
+  document.getElementById('check-token').value = '';
+  document.getElementById('check-funding-val').value = '';
+  document.getElementById('check-oi-val').value = '';
+  document.getElementById('check-notes').value = '';
+  renderChecklist();
+}
+
+function openChecklist(coin, apr, oi) {
+  switchTab('checklist');
+  document.getElementById('check-token').value = coin;
+  document.getElementById('check-funding-val').value = apr.toFixed(1);
+  document.getElementById('check-oi-val').value = (oi / 1e6).toFixed(2);
+  checkState['c1'] = apr > 80;
+  checkState['c3'] = oi > 3e6;
+  // Reset manual criteria when switching to a new token
+  checkState['c5'] = false;
+  checkState['c6'] = false;
+  checkState['c9'] = false;
+  checkState['c2'] = false;
+  checkState['c4'] = false;
+  checkState['c7'] = false;
+  checkState['c8'] = false;
+  saveChecklist();
+  renderChecklist();
+}
+
+function sendToCalc() {
+  const token = document.getElementById('check-token').value;
+  if (token) {
+    switchTab('calculator');
+    showNotif('→ Calculateur', `Token ${token} — entre le prix d'entrée et les niveaux.`);
+  }
+}
+
+// ============================================================
+// CALCULATOR
+// ============================================================
+function setLev(l) {
+  currentLev = l;
+  [3,4,5].forEach(n => {
+    const btn = document.getElementById('lev-'+n);
+    btn.className = n === l ? 'btn btn-primary' : 'btn btn-ghost';
+    btn.style.fontFamily = 'var(--mono)';
+  });
+  calcTrade();
+}
+
+function calcTrade() {
+  const capital  = parseFloat(document.getElementById('c-capital').value) || 500;
+  const riskPct  = parseFloat(document.getElementById('c-risk-pct').value) || 1;
+  const entry    = parseFloat(document.getElementById('c-entry').value);
+  const stop     = parseFloat(document.getElementById('c-stop').value);
+  const tp1      = parseFloat(document.getElementById('c-tp1').value);
+  const tp2      = parseFloat(document.getElementById('c-tp2').value);
+  const lev      = currentLev;
+
+  if (!entry || !stop) {
+    document.getElementById('r-risk').textContent = '$' + (capital * riskPct / 100).toFixed(2);
+    return;
+  }
+
+  const riskDollar  = capital * riskPct / 100;
+  const slDist      = Math.abs(stop - entry) / entry;
+  const notional    = slDist > 0 ? riskDollar / slDist : 0;
+  const margin      = notional / lev;
+
+  document.getElementById('r-risk').textContent    = '$' + riskDollar.toFixed(2);
+  document.getElementById('r-notional').textContent = '$' + notional.toFixed(2);
+  const marginEl = document.getElementById('r-margin');
+  marginEl.textContent = '$' + margin.toFixed(2);
+  marginEl.className = 'result-value' + (margin > capital * 0.1 ? ' warn' : '');
+  document.getElementById('r-sl-dist').textContent = (slDist * 100).toFixed(2) + '%';
+
+  // RR
+  const lossAmt = riskDollar;
+  let rr1El = document.getElementById('r-rr1');
+  let rr2El = document.getElementById('r-rr2');
+
+  if (tp1 && entry > 0) {
+    const gain1 = Math.abs(entry - tp1) / entry;
+    const gainAmt1 = notional * gain1;
+    const rr1 = gainAmt1 / lossAmt;
+    rr1El.textContent = rr1.toFixed(2) + ':1';
+    rr1El.className = 'result-value' + (rr1 >= 2 ? '' : rr1 >= 1.5 ? ' warn' : ' danger');
+    document.getElementById('r-gain1').textContent = '+$' + gainAmt1.toFixed(2);
+  } else {
+    rr1El.textContent = '—';
+    document.getElementById('r-gain1').textContent = '—';
+  }
+
+  if (tp2 && entry > 0) {
+    const gain2 = Math.abs(entry - tp2) / entry;
+    const gainAmt2 = notional * gain2;
+    const rr2 = gainAmt2 / lossAmt;
+    rr2El.textContent = rr2.toFixed(2) + ':1';
+    rr2El.className = 'result-value' + (rr2 >= 2 ? '' : ' warn');
+    document.getElementById('r-gain2').textContent = '+$' + gainAmt2.toFixed(2);
+  }
+
+  // Verdict
+  const vEl = document.getElementById('calc-verdict');
+  if (slDist > 0.08) {
+    vEl.innerHTML = `<div class="warn-box">⛔ Stop trop loin (${(slDist*100).toFixed(1)}%). Range trop large pour respecter R:R ≥ 2:1 avec 1% de risque. Passer ce trade.</div>`;
+  } else if (margin > capital * 0.06) {
+    vEl.innerHTML = `<div class="warn-box">⚠ Marge élevée ($${margin.toFixed(0)}). Vérifie que tu ne dépasses pas 5% du capital en marge par trade.</div>`;
+  } else if (tp1) {
+    const gain1 = Math.abs(entry - tp1) / entry;
+    const rr1 = (notional * gain1) / lossAmt;
+    if (rr1 >= 2) {
+      vEl.innerHTML = `<div style="background:var(--red-dim);border:1px solid rgba(255,77,106,0.2);border-radius:8px;padding:12px 16px;font-family:var(--mono);font-size:11px;color:var(--red);">✓ Trade valide — R:R ${rr1.toFixed(2)}:1 ≥ 2:1</div>`;
+    } else {
+      vEl.innerHTML = `<div class="warn-box">⚠ R:R ${rr1.toFixed(2)}:1 insuffisant. Chercher un objectif plus ambitieux ou skip.</div>`;
+    }
+  }
+
+  // Exit plan
+  if (entry && stop && tp1) {
+    const gain1Pct = (Math.abs(entry - tp1) / entry * 100).toFixed(1);
+    const gain1Amt = (notional * Math.abs(entry - tp1) / entry * 0.5).toFixed(2);
+    document.getElementById('exit-plan').innerHTML = `
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="color:var(--text3);margin-bottom:4px;">Short entré à <strong style="color:var(--text)">$${entry}</strong> — notionnel <strong style="color:var(--text)">$${notional.toFixed(0)}</strong> × ${lev}</div>
+        <div>🎯 <strong>Objectif 1 atteint ($${tp1}) :</strong> fermer 50% → gain +$${gain1Amt} · déplacer SL au breakeven ($${entry})</div>
+        ${tp2 ? `<div>🏁 <strong>Objectif 2 ($${tp2}) :</strong> fermer les 50% restants</div>` : ''}
+        <div>⛔ <strong>Stop-Loss :</strong> $${stop} — perte max $${lossAmt.toFixed(2)}</div>
+        <div>📅 <strong>Durée max :</strong> 7 jours — sortir si rien ne se passe</div>
+        <div>📉 <strong>Sortie anticipée si :</strong> OI chute −20% rapidement OU funding revient sous 30%</div>
+        <div>❌ <strong>Invalidation :</strong> nouveau ATH en clôture 4h → sortie immédiate</div>
+      </div>`;
+  }
+}
+
+// ============================================================
+// MATH
+// ============================================================
+function calcMath() {
+  const wr     = parseFloat(document.getElementById('m-wr').value) / 100;
+  const rr     = parseFloat(document.getElementById('m-rr').value);
+  const risk   = parseFloat(document.getElementById('m-risk').value);
+  const trades = parseInt(document.getElementById('m-trades').value);
+
+  const exp = wr * rr * risk - (1 - wr) * risk;
+  const total = exp * trades;
+  const wins  = Math.round(wr * trades);
+  const losses = trades - wins;
+  const grossWin  = wins  * rr * risk;
+  const grossLoss = losses * risk;
+
+  const el = document.getElementById('math-result');
+  const ok = exp > 0;
+
+  el.innerHTML = `
+    <div class="result-grid">
+      <div class="result-card">
+        <div class="result-label">Espérance / trade</div>
+        <div class="result-value ${ok ? '' : 'danger'}">${ok ? '+' : ''}$${exp.toFixed(2)}</div>
+        <div class="result-sub">${(wr*100).toFixed(0)}% WR × ${rr}:1 R:R</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Sur ${trades} trades</div>
+        <div class="result-value ${ok ? '' : 'danger'}">${ok ? '+' : ''}$${total.toFixed(0)}</div>
+        <div class="result-sub">${wins} gagnants / ${losses} perdants</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Gains bruts</div>
+        <div class="result-value">+$${grossWin.toFixed(0)}</div>
+        <div class="result-sub">${wins} trades × $${(rr*risk).toFixed(1)}</div>
+      </div>
+      <div class="result-card">
+        <div class="result-label">Pertes brutes</div>
+        <div class="result-value danger">−$${grossLoss.toFixed(0)}</div>
+        <div class="result-sub">${losses} trades × $${risk}</div>
+      </div>
+    </div>
+    <div style="margin-top:14px;padding:12px 14px;border-radius:7px;font-family:var(--mono);font-size:12px;
+      background:${ok ? 'var(--green-dim)' : 'var(--red-dim)'};
+      border:1px solid ${ok ? 'rgba(0,229,160,0.2)' : 'rgba(255,77,106,0.2)'};
+      color:${ok ? 'var(--green)' : 'var(--red)'};">
+      ${ok
+        ? `✓ Stratégie rentable à ${(wr*100).toFixed(0)}% de réussite avec un R:R de ${rr}:1`
+        : `✗ Pas rentable — augmente le R:R ou le win rate. Seuil min : ${(1/(1+rr)*100).toFixed(0)}% WR pour du ${rr}:1`}
+    </div>`;
+}
+
+// ============================================================
+// ALERTS
+// ============================================================
+const AL_TYPES = { entry:'🎯 Entrée', sl:'⛔ Stop', tp1:'✅ TP1', tp2:'🏁 TP2', invalid:'❌ Inval.' };
+
+function renderAlerts() {
+  const list = document.getElementById('alert-list');
+  document.getElementById('alert-count').textContent = alerts.length;
+  if (!alerts.length) { list.innerHTML = `<div class="empty-state">Aucune alerte configurée</div>`; return; }
+  list.innerHTML = `<div class="alert-list">${alerts.map((a,i) => `
+    <div class="alert-item ${a.triggered ? 'triggered' : ''}">
+      <div class="alert-info">
+        <div class="alert-name">${a.coin} &nbsp;<span style="font-size:10px;font-family:var(--mono);color:var(--text3)">${AL_TYPES[a.type]||''}</span></div>
+        <div class="alert-detail">Prix ${a.cond === 'gt' ? '>' : '<'} $${a.price} ${a.triggered ? '· <span style="color:var(--red)">DÉCLENCHÉE</span>' : ''}</div>
+      </div>
+      ${a.triggered ? '<span class="alert-triggered-badge">✓ ACTIVE</span>' : ''}
+      <button class="alert-delete" onclick="deleteAlert(${i})">✕</button>
+    </div>`).join('')}</div>`;
+}
+
+function addAlert() {
+  const coin  = document.getElementById('al-coin').value.trim().toUpperCase();
+  const cond  = document.getElementById('al-cond').value;
+  const price = parseFloat(document.getElementById('al-price').value);
+  const type  = document.getElementById('al-type').value;
+  if (!coin || isNaN(price)) return;
+  if (Notification.permission === 'default') Notification.requestPermission();
+  alerts.push({ coin, cond, price, type, triggered: false });
+  localStorage.setItem('doog_es_alerts', JSON.stringify(alerts));
+  renderAlerts();
+  showNotif('🔔 Alerte créée', `${coin} prix ${cond === 'gt' ? '>' : '<'} $${price} (${AL_TYPES[type]})`);
+}
+
+function deleteAlert(i) {
+  alerts.splice(i, 1);
+  localStorage.setItem('doog_es_alerts', JSON.stringify(alerts));
+  renderAlerts();
+}
+
+function prefillAlert(coin, price) {
+  switchTab('alertes');
+  document.getElementById('al-coin').value = coin;
+  document.getElementById('al-price').value = price.toFixed(4);
+  document.getElementById('al-cond').value = 'lt';
+  document.getElementById('al-type').value = 'entry';
+  showNotif('🔔 Alerte pré-remplie', `${coin} — définis le seuil de cassure du range puis ajoute.`);
+}
+
+function checkAlerts() {
+  alerts.forEach((a, i) => {
+    const m = allMarkets.find(x => x.coin === a.coin);
+    if (!m) return;
+    const triggered = a.cond === 'gt' ? m.markPrice > a.price : m.markPrice < a.price;
+    if (triggered && !a.triggered) {
+      a.triggered = true;
+      playAlertSound();
+      const typeLabel = AL_TYPES[a.type] || '';
+      showNotif(`🔔 ${a.coin} — ${typeLabel}`, `Prix ${a.cond === 'gt' ? '>' : '<'} $${a.price} | Actuel : $${m.markPrice}`);
+      if (Notification.permission === 'granted') {
+        new Notification(`🔔 ${a.coin} ${typeLabel}`, {
+          body: `Prix atteint $${m.markPrice.toFixed(4)} (seuil $${a.price})`,
+        });
+      }
+    }
+    if (!triggered) a.triggered = false;
+  });
+  localStorage.setItem('doog_es_alerts', JSON.stringify(alerts));
+  renderAlerts();
+}
+
+function playAlertSound() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.15, 0.30].forEach(delay => {
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain); gain.connect(ctx.destination);
+      osc.frequency.value = 660;
+      osc.type = 'sine';
+      gain.gain.setValueAtTime(0.25, ctx.currentTime + delay);
+      gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + delay + 0.12);
+      osc.start(ctx.currentTime + delay); osc.stop(ctx.currentTime + delay + 0.12);
+    });
+  } catch(e) {}
+}
+
+// ============================================================
+// NOTIFICATION
+// ============================================================
+let notifTimer = null;
+function showNotif(title, body) {
+  document.getElementById('notif-title').textContent = title;
+  document.getElementById('notif-body').textContent  = body;
+  const el = document.getElementById('notif');
+  el.classList.add('show');
+  clearTimeout(notifTimer);
+  notifTimer = setTimeout(() => el.classList.remove('show'), 4500);
+}
+
+// ============================================================
+// COLLAPSE
+// ============================================================
+function toggleCollapse(header) {
+  header.classList.toggle('open');
+  const body = header.nextElementSibling;
+  body.classList.toggle('open');
+}
+
+// ============================================================
+// COUNTDOWN + AUTO REFRESH
+// ============================================================
+function startRefreshLoop() {
+  setInterval(() => {
+    countdown--;
+    if (countdown <= 0) { countdown = 300; loadData(); }
+    const m = Math.floor(countdown / 60);
+    const s = countdown % 60;
+    document.getElementById('countdown-text').textContent =
+      `Refresh dans ${m}:${s.toString().padStart(2,'0')}`;
+  }, 1000);
+}
+
+// ============================================================
+// INIT
+// ============================================================
+renderChecklist();
+renderAlerts();
+calcMath();
+loadData();
+startRefreshLoop();
+</script>
+</body>
+</html>
