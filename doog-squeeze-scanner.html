@@ -1004,27 +1004,25 @@ async function fetchDydx() {
 
 async function fetchParadex() {
   try {
-    const res = await fetch('https://api.prod.paradex.trade/v1/markets/summary');
+    const res = await fetch('https://api.prod.paradex.trade/v1/markets?page_size=100');
     if (!res.ok) throw new Error('Paradex ' + res.status);
     const data = await res.json();
     document.getElementById('paradex-dot').style.background = 'var(--green)';
-    return (data.results || [])
-      .filter(m => m.symbol && m.symbol.endsWith('-USD-PERP'))
-      .map(m => {
-        const fr = parseFloat(m.funding_rate) || 0;
-        const apr = fr * 8760 * 100;
-        const oi = parseFloat(m.open_interest_usd) || 0;
-        const coin = m.symbol.replace('-USD-PERP', '');
-        return {
-          coin,
-          protocol: 'Paradex',
-          fundingRate: fr,
-          apr,
-          oi,
-          markPrice: parseFloat(m.mark_price) || 0,
-          vol24: parseFloat(m.volume_24h) || 0,
-        };
-      }).filter(m => !isNaN(m.apr) && m.oi > 0);
+    return (data.results || []).map(m => {
+      const fr = parseFloat(m.funding_rate) || 0;
+      const apr = fr * 8760 * 100;
+      const oi = parseFloat(m.open_interest_usd) || 0;
+      const coin = (m.symbol || '').replace('-USD-PERP','').replace('-PERP','');
+      return {
+        coin,
+        protocol: 'Paradex',
+        fundingRate: fr,
+        apr,
+        oi,
+        markPrice: parseFloat(m.mark_price) || 0,
+        vol24: parseFloat(m.volume_24h) || 0,
+      };
+    }).filter(m => m.coin && !isNaN(m.apr) && m.oi > 0);
   } catch(e) {
     document.getElementById('paradex-dot').style.background = 'var(--red)';
     return [];
@@ -1547,15 +1545,17 @@ function updateNtfyStatus(msg, color) {
 async function sendNtfy(title, body, priority = 'default', tags = []) {
   if (!ntfyConfig.topic) return;
   try {
+    // Strip emojis from title for HTTP header compatibility
+    const safeTitle = title.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/[\u2600-\u27FF]/g, '').trim();
     await fetch(`${ntfyConfig.server}/${ntfyConfig.topic}`, {
       method: 'POST',
       headers: {
-        'Title': title,
+        'Title':    safeTitle,
         'Priority': priority,
-        'Tags': tags.join(','),
-        'Content-Type': 'text/plain',
+        'Tags':     tags.join(','),
+        'Content-Type': 'text/plain; charset=utf-8',
       },
-      body: body,
+      body: title + '\n\n' + body,
     });
   } catch(e) {
     console.warn('NTFY send failed:', e);
