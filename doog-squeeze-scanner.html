@@ -1545,17 +1545,20 @@ function updateNtfyStatus(msg, color) {
 async function sendNtfy(title, body, priority = 'default', tags = []) {
   if (!ntfyConfig.topic) return;
   try {
-    // Strip emojis from title for HTTP header compatibility
-    const safeTitle = title.replace(/[\u{1F000}-\u{1FFFF}]/gu, '').replace(/[\u2600-\u27FF]/g, '').trim();
+    // Remove all non-latin characters from headers (emojis break HTTP headers)
+    const safeTitle = title.replace(/[^\x00-\x7F]/g, '').trim();
+    const safeTags  = tags.join(',').replace(/[^\x00-\x7F]/g, '');
+    // Body can be UTF-8 but sent as Blob to avoid encoding issues
+    const safeBody  = (title + '\n\n' + body).replace(/[^\x00-\x7F]/g, match => '');
+    const blob = new Blob([safeBody], { type: 'text/plain' });
     await fetch(`${ntfyConfig.server}/${ntfyConfig.topic}`, {
       method: 'POST',
       headers: {
-        'Title':    safeTitle,
+        'Title':    safeTitle || 'Doog Scanner',
         'Priority': priority,
-        'Tags':     tags.join(','),
-        'Content-Type': 'text/plain; charset=utf-8',
+        'Tags':     safeTags || 'bell',
       },
-      body: title + '\n\n' + body,
+      body: blob,
     });
   } catch(e) {
     console.warn('NTFY send failed:', e);
@@ -1564,14 +1567,14 @@ async function sendNtfy(title, body, priority = 'default', tags = []) {
 
 async function testNtfy() {
   saveNtfyConfig();
-  updateNtfyStatus('⏳ Envoi du test...', 'var(--orange)');
+  updateNtfyStatus('Envoi du test...', 'var(--orange)');
   await sendNtfy(
-    '🔔 Doog Squeeze Scanner — Test',
-    'Les alertes NTFY fonctionnent correctement. Topic : ' + ntfyConfig.topic,
+    'Doog Squeeze Scanner - Test',
+    'Les alertes NTFY fonctionnent. Topic : ' + ntfyConfig.topic,
     'default',
     ['white_check_mark']
   );
-  updateNtfyStatus('✓ Test envoyé → vérifie ton téléphone', 'var(--green)');
+  updateNtfyStatus('Test envoye - verifie ton telephone', 'var(--green)');
 }
 
 // ============================================================
