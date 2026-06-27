@@ -732,8 +732,30 @@
 
   <div class="info-box">
     <strong>Comment utiliser les alertes ici :</strong> Configure les niveaux clés de ton setup (bas du range, stop, objectifs).
-    L'outil joue un son et envoie une notification navigateur quand le prix live Hyperliquid touche ton niveau.<br>
+    L'outil joue un son, envoie une notification navigateur ET une notification NTFY sur ton téléphone quand le prix touche ton niveau.<br>
     <strong>Pour les alertes TradingView</strong> (recommandé en complément) → voir l'onglet Guide.
+  </div>
+
+  <!-- NTFY CONFIG -->
+  <div class="card" style="margin-bottom:16px;">
+    <div class="card-title">Configuration NTFY</div>
+    <div style="display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;">
+      <div class="control-group">
+        <span class="control-label">Serveur NTFY</span>
+        <input type="text" id="ntfy-server" value="https://ntfy.sh" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;min-width:180px;">
+      </div>
+      <div class="control-group">
+        <span class="control-label">Topic</span>
+        <input type="text" id="ntfy-topic" value="doog-squeeze-longs" style="background:var(--bg3);border:1px solid var(--border2);color:var(--text);font-family:var(--mono);font-size:12px;padding:8px 12px;border-radius:6px;min-width:180px;">
+      </div>
+      <div style="display:flex;gap:8px;align-items:flex-end;">
+        <button class="btn btn-ghost" onclick="saveNtfyConfig()">💾 Sauvegarder</button>
+        <button class="btn btn-ghost" onclick="testNtfy()">📲 Tester</button>
+      </div>
+    </div>
+    <div id="ntfy-status" style="font-family:var(--mono);font-size:11px;color:var(--text3);margin-top:10px;">
+      Statut : <span id="ntfy-status-text">non configuré</span>
+    </div>
   </div>
 
   <div class="alert-form">
@@ -1470,6 +1492,59 @@ function calcMath() {
 }
 
 // ============================================================
+// NTFY
+// ============================================================
+let ntfyConfig = JSON.parse(localStorage.getItem('doog_ntfy_config') || '{"server":"https://ntfy.sh","topic":"doog-squeeze-longs"}');
+
+function loadNtfyConfig() {
+  document.getElementById('ntfy-server').value = ntfyConfig.server || 'https://ntfy.sh';
+  document.getElementById('ntfy-topic').value  = ntfyConfig.topic  || 'doog-squeeze-longs';
+  updateNtfyStatus('configuré · topic : ' + ntfyConfig.topic, 'var(--green)');
+}
+
+function saveNtfyConfig() {
+  ntfyConfig.server = document.getElementById('ntfy-server').value.trim().replace(/\/$/, '');
+  ntfyConfig.topic  = document.getElementById('ntfy-topic').value.trim();
+  localStorage.setItem('doog_ntfy_config', JSON.stringify(ntfyConfig));
+  updateNtfyStatus('✓ sauvegardé · topic : ' + ntfyConfig.topic, 'var(--green)');
+}
+
+function updateNtfyStatus(msg, color) {
+  const el = document.getElementById('ntfy-status-text');
+  if (el) { el.textContent = msg; el.style.color = color; }
+}
+
+async function sendNtfy(title, body, priority = 'default', tags = []) {
+  if (!ntfyConfig.topic) return;
+  try {
+    await fetch(`${ntfyConfig.server}/${ntfyConfig.topic}`, {
+      method: 'POST',
+      headers: {
+        'Title': title,
+        'Priority': priority,
+        'Tags': tags.join(','),
+        'Content-Type': 'text/plain',
+      },
+      body: body,
+    });
+  } catch(e) {
+    console.warn('NTFY send failed:', e);
+  }
+}
+
+async function testNtfy() {
+  saveNtfyConfig();
+  updateNtfyStatus('⏳ Envoi du test...', 'var(--orange)');
+  await sendNtfy(
+    '🔔 Doog Squeeze Scanner — Test',
+    'Les alertes NTFY fonctionnent correctement. Topic : ' + ntfyConfig.topic,
+    'default',
+    ['white_check_mark']
+  );
+  updateNtfyStatus('✓ Test envoyé → vérifie ton téléphone', 'var(--green)');
+}
+
+// ============================================================
 // ALERTS
 // ============================================================
 const AL_TYPES = { entry:'🎯 Entrée', sl:'⛔ Stop', tp1:'✅ TP1', tp2:'🏁 TP2', invalid:'❌ Inval.' };
@@ -1526,12 +1601,30 @@ function checkAlerts() {
       a.triggered = true;
       playAlertSound();
       const typeLabel = AL_TYPES[a.type] || '';
-      showNotif(`🔔 ${a.coin} — ${typeLabel}`, `Prix ${a.cond === 'gt' ? '>' : '<'} $${a.price} | Actuel : $${m.markPrice}`);
+      const condStr = a.cond === 'gt' ? '>' : '<';
+      const priceStr = m.markPrice.toFixed(6).replace(/\.?0+$/, '');
+
+      // Notification navigateur
+      showNotif(`🔔 ${a.coin} — ${typeLabel}`, `Prix ${condStr} $${a.price} | Actuel : $${priceStr}`);
       if (Notification.permission === 'granted') {
         new Notification(`🔔 ${a.coin} ${typeLabel}`, {
-          body: `Prix atteint $${m.markPrice.toFixed(4)} (seuil $${a.price})`,
+          body: `Prix atteint $${priceStr} (seuil $${a.price})`,
         });
       }
+
+      // Notification NTFY
+      const ntfyPriority = (a.type === 'entry' || a.type === 'sl') ? 'high' : 'default';
+      const ntfyTags = {
+        entry:   ['dart', 'chart_with_downwards_trend'],
+        sl:      ['warning', 'rotating_light'],
+        tp1:     ['white_check_mark', 'moneybag'],
+        tp2:     ['trophy', 'moneybag'],
+        invalid: ['x', 'no_entry'],
+      }[a.type] || ['bell'];
+
+      const ntfyTitle = `${typeLabel} — ${a.coin}`;
+      const ntfyBody  = `Prix ${condStr} $${a.price}\nActuel : $${priceStr}\nExchange : ${m.protocol}`;
+      sendNtfy(ntfyTitle, ntfyBody, ntfyPriority, ntfyTags);
     }
     if (!triggered) a.triggered = false;
   });
@@ -1596,6 +1689,7 @@ function startRefreshLoop() {
 // ============================================================
 renderChecklist();
 renderAlerts();
+loadNtfyConfig();
 calcMath();
 loadData();
 startRefreshLoop();
