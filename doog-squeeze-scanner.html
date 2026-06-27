@@ -1204,6 +1204,9 @@ function applyFilters() {
 // ============================================================
 // LOAD DATA
 // ============================================================
+let knownStrongSignals = new Set(); // tracks coins already notified as strong
+let firstLoad = true;
+
 async function loadData() {
   document.getElementById('scanner-table-wrap').innerHTML = `<div class="loading-state"><div class="spinner"></div>Chargement des marchés...</div>`;
   countdown = 300;
@@ -1215,9 +1218,36 @@ async function loadData() {
     updateBtcContext(allMarkets);
     applyFilters();
     checkAlerts();
+    if (!firstLoad) checkNewSignals(allMarkets);
+    firstLoad = false;
   } catch(e) {
     document.getElementById('scanner-table-wrap').innerHTML = `<div class="error-state">Erreur de chargement : ${e.message}</div>`;
   }
+}
+
+function checkNewSignals(markets) {
+  const fundMin = parseFloat(document.getElementById('filter-funding').value) || 80;
+  const oiMin   = parseFloat(document.getElementById('filter-oi').value) || 3e6;
+
+  markets.forEach(m => {
+    const sc = signalScore(m);
+    const isStrong = sc.total >= 7 && m.apr >= fundMin && m.oi >= oiMin;
+    const key = m.coin + ':' + m.protocol;
+
+    if (isStrong && !knownStrongSignals.has(key)) {
+      // Nouveau signal fort détecté
+      knownStrongSignals.add(key);
+      const title = `🔴 SIGNAL FORT — ${m.coin}`;
+      const body  = `Funding : +${m.apr.toFixed(1)}% ann.\nOI : ${fmtUsd(m.oi)}\nExchange : ${m.protocol}\nPrix : $${m.markPrice}\n→ Vérifier sur TradingView`;
+      sendNtfy(title, body, 'high', ['rotating_light', 'chart_with_downwards_trend']);
+      showNotif(title, `Funding ${m.apr.toFixed(0)}% · OI ${fmtUsd(m.oi)} · ${m.protocol}`);
+    }
+
+    if (!isStrong && knownStrongSignals.has(key)) {
+      // Signal retombé — on retire de la liste pour pouvoir re-notifier si ça remonte
+      knownStrongSignals.delete(key);
+    }
+  });
 }
 
 // ============================================================
